@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+	<link href="https://fonts.googleapis.com/css?family=Caveat+Brush" rel="stylesheet">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<link rel="stylesheet" href='game.css'>
+	<!-- Latest compiled and minified JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+		integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+		crossorigin="anonymous"></script>
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+		integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://unpkg.com/css-baseline/css/4.css" />
+	<!-- Compiled and minified CSS -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" />
+	<!-- Compiled and minified JavaScript -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+	<!--script src="https://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script-->
+	<script src="./eventemitter2.js"></script>
+	<script src="./roslib.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js"></script>
+	<link rel="stylesheet" href='game.css'>
+	<script>
+		// setup connection to the ROS server and prepare the topic
+		var ros;
+		var listner;
+
+		// var audiolistner;
+		// var subTimer;
+
+		var time = new ROSLIB.Message({
+			data: '0',
+		});
+
+		var currTime = new ROSLIB.Message({
+			data: 'empty',
+		});
+
+	</script>
+</head>
+
+<!-- declare interface and the canvases that will display the video and the still shots -->
+
+<body>
+	<div style="
+				display: flex;
+				position: relative;
+				flex-direction: column;
+				width: 26rem;
+				padding: 2rem;
+				box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+					0 1px 10px 0 rgba(0, 0, 0, 0.12), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+				margin: 1rem;
+				border-radius: 12px;
+			">
+		<!-- <button
+				id="startstop"
+				style="outline-width: 0; background-color: transparent; border: none"
+			>
+				<img id="startstopicon" src="" />
+			</button> -->
+		<div class="switch" style="
+					margin-bottom: 2rem;
+					width: 100%;
+					display: flex;
+					justify-content: space-between;
+					align-items: center;
+				">
+			<h5>Activate Camera</h5>
+			<label>
+				<input id="startstopicon" type="checkbox" value="" />
+				<span class="lever"></span>
+			</label>
+		</div>
+		<!-- two inputs, one for ip address and one for the port -->
+		<label for="ip">IP Address</label>
+		<input id="ip" type="text" placeholder="IP Address" />
+
+		<label for="port">Port</label>
+		<input id="port" type="text" placeholder="Port" value="8080" />
+
+		<button id="connectButton" class="btn-large waves-effect waves-light" style="margin-top: 1rem">
+			Connect to ROSbridge Server
+		</button>
+		<p1 id="clock">
+			Clock
+		</p1>
+	</div>
+
+	<div class="container">
+		<div class="jumbotron text-center">
+			<h1>TIC TAC TOE GAME </h1>
+		</div>
+
+		<div id="chooseP">
+			<h2>Choose a side</h2><br /><br>
+			<button id="chooseP1" class="btn btn-primary">X</button> or <button id="chooseP2"
+				class="btn btn-primary">O</button>
+		</div>
+		<div class='row'>
+			<div class='col-md-4 col-md-offset-4' id="scores">P1: 0 P2: 0</div>
+		</div>
+
+		<div id='board'>
+			<table>
+				<tr class="top">
+					<td id="0" class="left"></td>
+					<td id="1" class="centre"></td>
+					<td id="2" class="right"></td>
+				</tr>
+				<tr class="mid">
+					<td id="3" class="left"></td>
+					<td id="4" class="centre"></td>
+					<td id="5" class="right"></td>
+				</tr>
+				<tr class="bot">
+					<td id="6" class="left"></td>
+					<td id="7" class="centre"></td>
+					<td id="8" class="right"></td>
+				</tr>
+			</table>
+		</div>
+		<div class="panel">
+			<div class="panel-footer">
+				Made by Nick Gray
+			</div>
+		</div>
+
+	</div>
+
+	<video muted style="display: none" autoplay id="video"></video>
+	<canvas style="display: none" id="canvas"></canvas>
+	<br />
+
+	<span id="messageLog" style="
+				padding: 1rem;
+				position: fixed;
+				right: 0;
+				top: 0;
+				height: 100vh;
+				overflow: auto;
+				width: 20rem;
+				background-color: whitesmoke;
+				border-left: 2px gray solid;
+				box-shadow: 0 4px 5px 0 rgba(0, 0, 0, 0.14),
+					0 1px 10px 0 rgba(0, 0, 0, 0.12), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+			">
+		(message log)
+	</span>
+
+	<script>
+		// grab the elements
+		var startstopiconElement = document.getElementById("startstopicon");
+		var connectButton = document.getElementById("connectButton");
+		var messageElement = document.getElementById("messageLog");
+		var ip = document.getElementById("ip");
+		var port = document.getElementById("port");
+		var canvas = document.querySelector("#canvas");
+
+		// startstopiconElement.setAttribute("src", RECORD_OFF);
+		const sendMessage = (message) => {
+			messageElement.innerHTML += `<br>...<br>...<br>${message}`;
+			messageElement.scrollTop = messageElement.scrollHeight;
+		};
+		ip.value = "" + window.location.hostname;
+
+
+		connectButton.addEventListener("click", function () {
+			var ipaddr = ip.value;
+			if (ipaddr == "") {
+				// default to localhost if no ip address is provided
+				ipaddr = window.location.hostname;
+				if (ipaddr == "localhost") {
+					ipaddr = "127.0.0.1";
+				}
+				if (ipaddr == "127.0.0.1") {
+					window.alert(
+						`Note: your connection should be something other than localhost (aka 127.0.0.1).\n\nI'll still let you try with localhost but just note that the public facing address should be used instead.`
+					);
+				}
+			}
+			var portVal = port.value;
+			const baseValue = ipaddr + ":" + portVal;
+			var connUrl = "wss://" + baseValue;
+			console.log("Attempting to connect to: " + connUrl);
+			ros = new ROSLIB.Ros({
+				url: connUrl,
+			});
+			ros.on("connection", function () {
+				console.log("Connected to websocket server.");
+				sendMessage("Success!");
+			});
+
+			ros.on("error", function (error) {
+				console.log("Error connecting to websocket server: ", error);
+				sendMessage(
+					`1. Make sure <code>roslaunch rb_server.launch</code> is running<br>2. Try opening this in a new tab:<br><a href="https://${baseValue}">https://${baseValue}</a><br>3. Click Advanced -> Accept Risk and Continue<br>4.Then re-run this test<br>`
+				);
+			});
+
+			ros.on("close", function () {
+				console.log("Connection to websocket server closed.");
+			});
+
+			listner = new ROSLIB.Topic({
+				ros: ros,
+				name: "/chatter",
+				messageType: 'std_msgs/String'
+			});
+
+		});
+		
+		setInterval(() => document.getElementById('clock').innerText = new Date().toLocaleTimeString(), 1000);
+
+
+		$(document).ready(function () {
+			$("#board, #scores").hide();
+
+
+			/* VARIABLES INITIATED IN HERE */
+			var human;
+			var comp;
+
+			//var time;
+			var start;
+
+			var p1 = [1, 'X', 0]; // [player,sign,wins]
+			var p2 = [2, 'O', 0];
+
+			var current;
+			var firstTurn;
+
+			var winners = [
+				[0, 1, 2],
+				[3, 4, 5],
+				[6, 7, 8],
+				[0, 1, 2],
+				[0, 3, 6],
+				[1, 4, 7],
+				[2, 5, 8],
+				[0, 4, 8],
+				[2, 4, 6]
+			];
+
+			var boardArr = ["#", "#", "#", "#", "#", "#", "#", "#", "#"];
+
+			var gameWon = false;
+
+			var turnCount = 0;
+			// var distraction = "yes";
+
+			// var y = setTimeout(listner.publish(distraction), 6000);
+			// var myVar = setInterval(listner.publish(Math.floor(Date.now()/1000)), 1000);
+
+			/*CODE TO BEGIN GAME, PLAYER NEEDS TO CHOOSE X OR O*/
+			$('#chooseP > .btn').click(function () {
+				if ($(this).attr('id') === "chooseP1") {
+					human = p1;
+					comp = p2;
+					current = human;
+					firstTurn = 'human';
+				} else {
+					human = p2;
+					comp = p1;
+					current = comp;
+					firstTurn = 'comp';
+					//need to run computer first turn
+					var x = setTimeout(compTurn, 500);
+				}
+				$('#chooseP').hide();
+				$("#board, #scores").show();
+				start = Date.now().toString();
+				currTime.data = "start";
+				listner.publish(currTime);
+			});
+
+
+			/*CODE TO MAKE FREE TILES CHANGE MOUSE ON HOVER SO PLAYER CAN SEE IF AVAILABLE*/
+			$("td").hover(function () {
+				var pos = $(this).attr("id");
+				//checks if square is empty using board array, if it is empty, changes mouse to crosshair when hovering
+				if (boardArr[pos] == "#") {
+					$(this).css("cursor", "crosshair");
+				}
+			});
+
+			//CODE FOR HUMAN CLICKING EMPTY SQUARE
+
+			$("td").click(function () {
+				var tile = $(this).attr('id');
+				if (boardArr[tile] === '#') {
+
+					humanTurn(tile);
+
+				}
+			})
+
+
+			/*FUNCTIONS TO BE CALLED FOR TURNS*/
+
+			//pickEmpty, used for computers turn to pick a random empty square.
+			function pickEmpty() {
+				var emptyArr = [];
+				for (i = 0; i < boardArr.length; i++) {
+					if (boardArr[i] === '#') {
+						emptyArr.push(i);
+					}
+				}
+				var x = Math.round(Math.random() * emptyArr.length);
+				var choice = emptyArr[x];
+				if (choice === undefined) {
+					choice = emptyArr[x - 1];
+				}
+				return choice;
+			};
+			/********************************************************/
+
+			/**************COMPUTERS TURN****************************/
+			function compTurn() {
+				let current = comp;
+				var tile = pickEmpty();
+				$('#' + tile).html(comp[1]);
+				boardArr[tile] = comp[1];
+				checkWin(current);
+				if (gameWon === 1 || gameWon === 2) {
+					alert("Computer wins!");
+					winReset(comp);
+
+				}
+				else {
+					turnCount++;
+					checkDraw();
+					if (turnCount === 0 && human[0] === 2) {
+						compTurn();
+					}
+				}
+				
+				
+				alert("Computer turn is over");
+				currTime.data = "start";
+				listner.publish(currTime);
+
+			};
+
+			/*********************HUMANS TURN**************************/
+			function humanTurn(tile) {
+				let current = human;
+				$('#' + tile).html(human[1]);
+				boardArr[tile] = human[1];
+				checkWin(current);
+
+				if (gameWon === 1 || gameWon === 2) {
+					alert("Nice one, you win!");
+					var reset = setTimeout(winReset(human), 1000);
+				}
+				else {
+					turnCount++;
+					temp = Math.floor((Date.now() - start) / 1000);
+					start = Date.now();
+					time.data = temp.toString();
+					// listner.publish(time);
+					alert("Current Turn time: " + time.da + " seconds.");
+					checkDraw();
+					if (turnCount !== 0) {
+						var compGo = setTimeout(compTurn, 800);
+					} else if (turnCount === 0 && human[0] === 2) {
+						compTurn();
+					}
+
+				}
+
+			}
+
+
+			/**********************Function to check for a win*********************/
+			function checkWin(curr) {
+				var currentTiles = [];
+				//compile array of all tiles taken by the current player
+				for (i = 0; i < boardArr.length; i++) {
+					if (boardArr[i] === curr[1]) {
+						currentTiles.push(i);
+					}
+				}
+
+				//Check the current tiles array agains each winning combo to find a match.
+				for (x = 0; x < winners.length; x++) {
+					var count = 0;
+					for (j = 0; j < winners[x].length; j++) {
+						if (currentTiles.indexOf(winners[x][j]) != -1) {
+							count++;
+						}
+
+						if (count == 3) {
+
+							gameWon = current[0];
+
+						}
+					}
+				}
+
+			}
+
+			/**************Upon win, updates scores and resets board for new game********/
+			function winReset(winner) {
+				winner[2]++;
+				$('#scores').html('P1: ' + p1[2] + ' <br>P2: ' + p2[2]);
+				turnCount = 0;
+				$('td').html('');
+				boardArr = ["#", "#", "#", "#", "#", "#", "#", "#", "#"];
+				if (human === p1) {
+					current = human;
+				} else {
+
+					let current = comp;
+					var tile = pickEmpty();
+					$('#' + tile).html(comp[1]);
+					boardArr[tile] = comp[1];
+					turnCount++;
+
+				}
+				gameWon = false;
+			}
+
+			/*******************CHECKS FOR DRAW*********************/
+			function checkDraw() {
+				if (turnCount > 8) {
+					alert("It's a Draw!");
+					$('td').html('');
+					boardArr = ["#", "#", "#", "#", "#", "#", "#", "#", "#"];
+					if (human === p1) {
+						current = human;
+					} else {
+						current = comp;
+					}
+					turnCount = 0;
+				}
+			}
+
+
+		});
+
+
+	</script>
+</body>
+
+</html>
